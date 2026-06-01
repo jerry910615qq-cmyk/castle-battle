@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+
+:root {
+  --parchment: #f6ecd6;
+  --parchment-2: #efe2c4;
+  --ink: #4a3b28;
+  --ink-soft: #7a6748;
+  --gold: #c9a227;
+}
+
+body {
+  margin: 0;
+  font-family: 'Georgia', 'Times New Roman', 'Segoe UI', serif;
+  color: var(--ink);
+  user-select: none;
+  background:
+    radial-gradient(circle at 50% -10%, #fffaf0 0%, transparent 55%),
+    linear-gradient(160deg, #fdf6e3 0%, #f3e7c9 60%, #ecdcb6 100%);
+  background-attachment: fixed;
+  min-height: 100svh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 羊皮紙卡片 */
+.parchment {
+  background: linear-gradient(180deg, #fbf3df 0%, #f3e6c6 100%);
+  border: 2px solid #d8c290;
+  box-shadow: 0 8px 24px rgba(120, 90, 40, 0.18), inset 0 1px 0 #fff8;
+  border-radius: 16px;
+}
+
+.medieval-title {
+  font-family: 'Georgia', serif;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 0 #fff8, 0 3px 6px rgba(120,90,40,.25);
+}
