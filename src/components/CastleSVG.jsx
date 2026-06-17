@@ -1,114 +1,215 @@
-export default function CastleSVG({ color, flip, hp = 100, maxHp = 100, shake, size = 180 }) {
-  const ratio = Math.max(0, hp) / maxHp;
-  const damaged = ratio <= 0.4;
-  const critical = ratio <= 0.15;
-  const dark = shade(color, -28);
-  const light = shade(color, 22);
+/* 純手繪 SVG 中世紀城堡，不依賴任何外部圖片 */
 
+function Merlons({ x, y, width, fill, count, mW = 8, mH = 14, gW = 6 }) {
+  const step = mW + gW;
+  const totalW = count * step - gW;
+  const sx = x + (width - totalW) / 2;
+  return Array.from({ length: count }, (_, i) => (
+    <rect key={i} x={sx + i * step} y={y} width={mW} height={mH} fill={fill} rx="1.5" />
+  ));
+}
+
+function ArchWindow({ cx, cy, w = 12, h = 20, fill, stroke, sW = 1.5 }) {
+  const r = w / 2;
   return (
-    <svg
-      viewBox="0 0 160 180"
-      width={size}
-      height={(size * 180) / 160}
-      style={{
-        transform: flip ? 'scaleX(-1)' : 'none',
-        filter: shake ? `drop-shadow(0 0 14px ${color})` : 'drop-shadow(0 6px 8px rgba(80,55,20,.25))',
-        transition: 'filter .3s',
-      }}
-    >
-      {/* 草地基座 */}
-      <ellipse cx="80" cy="172" rx="74" ry="9" fill="#cdbb8a" opacity="0.55" />
-
-      {/* 側翼旗幟桿 */}
-      <line x1="18" y1="60" x2="18" y2="20" stroke="#8a6b3a" strokeWidth="2.5" />
-      <polygon points="18,22 40,30 18,38" fill={color} />
-      <line x1="142" y1="60" x2="142" y2="20" stroke="#8a6b3a" strokeWidth="2.5" />
-      <polygon points="142,22 120,30 142,38" fill={color} />
-
-      {/* 主城牆 */}
-      <rect x="14" y="78" width="132" height="84" rx="3" fill={color} />
-      <rect x="14" y="78" width="132" height="10" fill={light} opacity="0.6" />
-      {/* 城牆石紋 */}
-      {[96, 112, 128, 144].map((y) => (
-        <line key={y} x1="16" y1={y} x2="144" y2={y} stroke={dark} strokeWidth="1" opacity="0.35" />
-      ))}
-      {/* 牆面城垛 */}
-      {[14, 33, 52, 90, 109, 128].map((x) => (
-        <rect key={x} x={x} y="68" width="13" height="16" rx="1.5" fill={color} />
-      ))}
-
-      {/* 左右側塔 */}
-      {[{ x: 8 }, { x: 124 }].map(({ x }) => (
-        <g key={x}>
-          <rect x={x} y="48" width="28" height="114" rx="3" fill={dark} />
-          {[x, x + 9, x + 18].map((cx) => (
-            <rect key={cx} x={cx} y="38" width="7" height="14" rx="1.5" fill={dark} />
-          ))}
-          {/* 塔頂錐 */}
-          <polygon points={`${x},38 ${x + 14},20 ${x + 28},38`} fill={shade(color, -45)} />
-          {/* 塔窗 */}
-          <rect x={x + 10} y="70" width="8" height="14" rx="4" fill="#1c2433" opacity="0.85" />
-          {/* 小旗 */}
-          <line x1={x + 14} y1="20" x2={x + 14} y2="10" stroke="#fff8" strokeWidth="1.5" />
-          <polygon points={`${x + 14},10 ${x + 24},14 ${x + 14},18`} fill="#f2d35a" />
-        </g>
-      ))}
-
-      {/* 中央主塔 */}
-      <rect x="56" y="40" width="48" height="120" rx="3" fill={shade(color, -12)} />
-      {[56, 68, 80, 92].map((cx) => (
-        <rect key={cx} x={cx} y="30" width="9" height="14" rx="1.5" fill={shade(color, -12)} />
-      ))}
-      {/* 主塔石紋 */}
-      {[60, 78, 96, 114, 132].map((y) => (
-        <line key={y} x1="58" y1={y} x2="102" y2={y} stroke={dark} strokeWidth="1" opacity="0.4" />
-      ))}
-
-      {/* 騎馬騎士旗（塔頂） */}
-      <line x1="80" y1="30" x2="80" y2="6" stroke="#8a6b3a" strokeWidth="2.5" />
-      <rect x="80" y="6" width="30" height="20" rx="2" fill={color} stroke={dark} strokeWidth="1" />
-      <text x="95" y="22" textAnchor="middle" fontSize="15">🏇</text>
-
-      {/* 盾牌裝飾 */}
-      {[{ x: 30, y: 108 }, { x: 124, y: 108 }].map(({ x, y }) => (
-        <g key={x}>
-          <path d={`M${x} ${y} h14 v8 q0 8 -7 12 q-7 -4 -7 -12 z`} fill="#e7d8b3" stroke={dark} strokeWidth="1.2" />
-          <line x1={x + 7} y1={y} x2={x + 7} y2={y + 18} stroke={dark} strokeWidth="1" />
-          <line x1={x} y1={y + 6} x2={x + 14} y2={y + 6} stroke={dark} strokeWidth="1" />
-        </g>
-      ))}
-
-      {/* 火炬 */}
-      {[24, 136].map((x) => (
-        <g key={x}>
-          <rect x={x - 1.5} y="120" width="3" height="14" fill="#7a5a2a" />
-          <circle cx={x} cy="118" r="4.5" fill="#ffb24d" />
-          <circle cx={x} cy="116" r="2.5" fill="#ffe08a" />
-        </g>
-      ))}
-
-      {/* 拱門城門 */}
-      <path d="M66 162 v-22 a14 14 0 0 1 28 0 v22 z" fill="#2a1d12" />
-      <path d="M66 162 v-22 a14 14 0 0 1 28 0 v22" fill="none" stroke="#8a6b3a" strokeWidth="2" />
-      <line x1="80" y1="140" x2="80" y2="162" stroke="#8a6b3a" strokeWidth="1.5" opacity="0.7" />
-
-      {/* 受損裂痕 */}
-      {damaged && (
-        <>
-          <polyline points="30,82 38,100 32,118" fill="none" stroke="#1c2433" strokeWidth="1.6" opacity="0.5" />
-          <polyline points="120,80 112,96 118,114" fill="none" stroke="#1c2433" strokeWidth="1.6" opacity="0.5" />
-        </>
-      )}
-      {critical && <text x="80" y="60" textAnchor="middle" fontSize="20">🔥</text>}
-    </svg>
+    <path
+      d={`M ${cx - r},${cy + h} L ${cx - r},${cy + r} A ${r},${r} 0 0,1 ${cx + r},${cy + r} L ${cx + r},${cy + h} Z`}
+      fill={fill} stroke={stroke} strokeWidth={sW}
+    />
   );
 }
 
-function shade(hex, amt) {
-  const n = parseInt(hex.slice(1), 16);
-  let r = (n >> 16) + amt, g = ((n >> 8) & 0xff) + amt, b = (n & 0xff) + amt;
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  b = Math.max(0, Math.min(255, b));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+function Slit({ cx, cy, fill }) {
+  return (
+    <g>
+      <rect x={cx - 1.5} y={cy}     width={3} height={13} rx="1.5" fill={fill} />
+      <rect x={cx - 4}   y={cy + 4} width={8} height={3}  rx="1"   fill={fill} />
+    </g>
+  );
+}
+
+function StoneLines({ x, y, w, h, stroke, sp = 15 }) {
+  const lines = [];
+  for (let ly = y + sp; ly < y + h; ly += sp)
+    lines.push(<line key={ly} x1={x} y1={ly} x2={x + w} y2={ly} stroke={stroke} strokeWidth="0.7" opacity="0.45" />);
+  return <>{lines}</>;
+}
+
+function Flag({ x, y, tcL }) {
+  return (
+    <>
+      <line x1={x} y1={y} x2={x} y2={y + 18} stroke={tcL} strokeWidth="1.8" />
+      <polygon points={`${x},${y + 1} ${x + 14},${y + 6} ${x},${y + 11}`} fill={tcL} />
+    </>
+  );
+}
+
+export default function CastleSVG({ color, flip, hp = 100, maxHp = 100, size, fillHeight = false }) {
+  const ratio = Math.max(0, hp) / maxHp;
+  const isBlue = color === '#185FA5';
+  const id = isBlue ? 'b' : 'r';
+
+  const tc   = isBlue ? '#1a6abf' : '#bf2020';
+  const tcD  = isBlue ? '#0e3d72' : '#7a0f0f';
+  const tcDD = isBlue ? '#06203e' : '#3f0606';
+  const tcM  = isBlue ? '#2580d8' : '#d83030';
+  const tcL  = isBlue ? '#60b0ff' : '#ff6060';
+
+  const W = 200, H = 305;
+
+  // fillHeight: 高度撐滿父容器 | size: 固定像素寬 | 否則: 100% 響應式
+  const containerStyle = fillHeight
+    ? { height: '100%', display: 'inline-flex', alignItems: 'flex-end', lineHeight: 0 }
+    : { display: 'block', lineHeight: 0, width: '100%' };
+
+  const svgStyle = {
+    display: 'block',
+    transform: flip ? 'scaleX(-1)' : 'none',
+    opacity: ratio <= 0 ? 0.25 : 1,
+    ...(fillHeight
+      ? { height: '100%', width: 'auto' }
+      : size
+        ? { width: size, height: size * (H / W) }
+        : { width: '100%', height: 'auto' }),
+  };
+
+  return (
+    <div style={containerStyle}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={svgStyle} xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id={`wg-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={tcM} />
+            <stop offset="100%" stopColor={tcD} />
+          </linearGradient>
+          <linearGradient id={`sd-${id}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stopColor={tcL}  stopOpacity="0.18" />
+            <stop offset="55%"  stopColor={tc}   stopOpacity="0" />
+            <stop offset="100%" stopColor={tcDD} stopOpacity="0.32" />
+          </linearGradient>
+          <linearGradient id={`kg-${id}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stopColor={tcL}  stopOpacity="0.14" />
+            <stop offset="50%"  stopColor={tc}   stopOpacity="0" />
+            <stop offset="100%" stopColor={tcDD} stopOpacity="0.28" />
+          </linearGradient>
+        </defs>
+
+        {/* ── 地面 ── */}
+        <rect x="0"  y="294" width="200" height="11" fill={tcDD} rx="2" />
+        <rect x="0"  y="291" width="200" height="4"  fill={tcD}  opacity="0.6" />
+
+        {/* ── 左側連接牆 ── x=48-72, y=192-294 */}
+        <rect x="48" y="192" width="24" height="102" fill={`url(#wg-${id})`} />
+        <rect x="48" y="192" width="24" height="102" fill={`url(#sd-${id})`} />
+        <StoneLines x={48} y={192} w={24} h={102} stroke={tcD} />
+        <rect x="48" y="180" width="24" height="13"  fill={tc} />
+        <Merlons x={48} y={167} width={24} fill={tc} count={2} mW={7} gW={5} mH={14} />
+
+        {/* ── 右側連接牆 ── x=128-152, y=192-294 */}
+        <rect x="128" y="192" width="24" height="102" fill={`url(#wg-${id})`} />
+        <rect x="128" y="192" width="24" height="102" fill={`url(#sd-${id})`} />
+        <StoneLines x={128} y={192} w={24} h={102} stroke={tcD} />
+        <rect x="128" y="180" width="24" height="13"  fill={tc} />
+        <Merlons x={128} y={167} width={24} fill={tc} count={2} mW={7} gW={5} mH={14} />
+
+        {/* ── 城門 ── center=100, arch y=212-294, width=40 */}
+        {/* 門洞 */}
+        <rect x="80" y="226" width="40" height="68" fill={tcDD} />
+        <path d="M 80,226 A 20,20 0 0,1 120,226 Z" fill={tcDD} />
+        {/* 閘門格柵 */}
+        {[86, 93, 100, 107, 114].map(bx => (
+          <line key={`gv${bx}`} x1={bx} y1={226} x2={bx} y2={294} stroke={tcD} strokeWidth="2" opacity="0.55" />
+        ))}
+        {[234, 244, 254, 264, 274, 284].map(by => (
+          <line key={`gh${by}`} x1={80} y1={by} x2={120} y2={by} stroke={tcD} strokeWidth="1.5" opacity="0.55" />
+        ))}
+        {/* 門框 */}
+        <path d="M 78,228 A 22,22 0 0,1 122,228 L 122,294 L 78,294 Z"
+          fill="none" stroke={tcD} strokeWidth="2.5" strokeLinejoin="round" />
+        {/* 門框圓角 highlight */}
+        <path d="M 80,226 A 20,20 0 0,1 120,226"
+          fill="none" stroke={tcL} strokeWidth="1" opacity="0.3" />
+
+        {/* ── 左主塔 ── x=0-50, y=88-294 */}
+        <rect x="0"  y="88"  width="50" height="206" fill={`url(#wg-${id})`} />
+        <rect x="0"  y="88"  width="50" height="206" fill={`url(#sd-${id})`} />
+        <StoneLines x={0} y={88} w={50} h={206} stroke={tcD} />
+        {/* 左塔垛口 */}
+        <rect x="0"  y="74"  width="50" height="16" fill={tc} />
+        <Merlons x={0} y={59} width={50} fill={tc} count={5} mW={7} gW={5} mH={16} />
+        {/* 左塔射箭孔 + 窗 */}
+        <ArchWindow cx={25} cy={104} w={12} h={20} fill={tcDD} stroke={tcD} sW={1} />
+        <Slit cx={25} cy={148} fill={tcDD} />
+        <ArchWindow cx={25} cy={183} w={12} h={20} fill={tcDD} stroke={tcD} sW={1} />
+        <Slit cx={25} cy={232} fill={tcDD} />
+        {/* 左塔邊緣線 */}
+        <line x1="50" y1="88" x2="50" y2="294" stroke={tcD} strokeWidth="1.8" opacity="0.45" />
+
+        {/* ── 右主塔 ── x=150-200, y=88-294 */}
+        <rect x="150" y="88"  width="50" height="206" fill={`url(#wg-${id})`} />
+        <rect x="150" y="88"  width="50" height="206" fill={`url(#sd-${id})`} />
+        <StoneLines x={150} y={88} w={50} h={206} stroke={tcD} />
+        <rect x="150" y="74"  width="50" height="16" fill={tc} />
+        <Merlons x={150} y={59} width={50} fill={tc} count={5} mW={7} gW={5} mH={16} />
+        <ArchWindow cx={175} cy={104} w={12} h={20} fill={tcDD} stroke={tcD} sW={1} />
+        <Slit cx={175} cy={148} fill={tcDD} />
+        <ArchWindow cx={175} cy={183} w={12} h={20} fill={tcDD} stroke={tcD} sW={1} />
+        <Slit cx={175} cy={232} fill={tcDD} />
+        <line x1="150" y1="88" x2="150" y2="294" stroke={tcD} strokeWidth="1.8" opacity="0.45" />
+
+        {/* ── 中央主堡（最高）── x=68-132, y=24-294 */}
+        <rect x="68" y="24"  width="64" height="270" fill={`url(#wg-${id})`} />
+        <rect x="68" y="24"  width="64" height="270" fill={`url(#kg-${id})`} />
+        <StoneLines x={68} y={24} w={64} h={270} stroke={tcD} sp={14} />
+        {/* 主堡垛口 */}
+        <rect x="68" y="10"  width="64" height="16"  fill={tc} />
+        <Merlons x={68} y={-2} width={64} fill={tc} count={6} mW={7} gW={5} mH={13} />
+        {/* 主堡窗戶 */}
+        <ArchWindow cx={100} cy={40}  w={14} h={24} fill={tcDD} stroke={tcD} sW={1.2} />
+        <ArchWindow cx={83}  cy={88}  w={11} h={18} fill={tcDD} stroke={tcD} sW={1} />
+        <ArchWindow cx={117} cy={88}  w={11} h={18} fill={tcDD} stroke={tcD} sW={1} />
+        {/* 玫瑰窗 */}
+        <circle cx={100} cy={140} r={11}  fill={tcDD} />
+        <circle cx={100} cy={140} r={7}   fill={tcD} />
+        <circle cx={100} cy={140} r={3}   fill={tcDD} />
+        {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => {
+          const rad = deg * Math.PI / 180;
+          return (
+            <line key={deg}
+              x1={100 + 3.5 * Math.cos(rad)} y1={140 + 3.5 * Math.sin(rad)}
+              x2={100 + 10 * Math.cos(rad)}  y2={140 + 10 * Math.sin(rad)}
+              stroke={tcM} strokeWidth="1.2" opacity="0.9"
+            />
+          );
+        })}
+        <ArchWindow cx={100} cy={172} w={14} h={24} fill={tcDD} stroke={tcD} sW={1.2} />
+        {/* 主堡側邊線 */}
+        <line x1="68"  y1="24" x2="68"  y2="294" stroke={tcD} strokeWidth="1.5" opacity="0.4" />
+        <line x1="132" y1="24" x2="132" y2="294" stroke={tcD} strokeWidth="1.5" opacity="0.4" />
+
+        {/* ── 旗幟 ── */}
+        <Flag x={25}  y={52}  tcL={tcL} />
+        <Flag x={175} y={52}  tcL={tcL} />
+        <Flag x={100} y={-3}  tcL={tcL} />
+
+        {/* ── 裝飾：塔基石 ── */}
+        <rect x="0"   y="286" width="50"  height="8" rx="1" fill={tcD} opacity="0.5" />
+        <rect x="150" y="286" width="50"  height="8" rx="1" fill={tcD} opacity="0.5" />
+        <rect x="68"  y="286" width="64"  height="8" rx="1" fill={tcD} opacity="0.5" />
+
+        {/* ── 傷害效果 ── */}
+        {ratio <= 0.4 && ratio > 0.15 && (
+          <rect x="0" y="0" width="200" height="305" fill="rgba(120,0,0,0.20)" />
+        )}
+        {ratio <= 0.15 && ratio > 0 && (
+          <>
+            <rect x="0" y="0" width="200" height="305" fill="rgba(140,0,0,0.38)" />
+            <text x="100" y="178" textAnchor="middle" fontSize="38">🔥🔥</text>
+          </>
+        )}
+        {ratio <= 0 && (
+          <text x="100" y="170" textAnchor="middle" fontSize="54">💀</text>
+        )}
+      </svg>
+    </div>
+  );
 }

@@ -38,7 +38,8 @@ export async function submitCorrect(roomId, mySide, slot, level, teamSize) {
     return {
       ...team,
       combo: newCombo,
-      score: (team.score || 0) + damage,
+      score: (team.score || 0) + damage,   // 累積傷害（驅動騎士衝鋒動畫）
+      solved: (team.solved || 0) + 1,       // 答對題數（顯示用）
       turnIndex: ((team.turnIndex || 0) + 1) % teamSize,
       currentQuestion: generateQuestion(level),
       members,

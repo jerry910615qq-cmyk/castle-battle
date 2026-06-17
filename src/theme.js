@@ -17,6 +17,7 @@ export const MODES = [
   { id: '1v1', label: '1 對 1', emoji: '⚔️', teamSize: 1, desc: '房號單挑' },
   { id: '2v2', label: '2 對 2', emoji: '🛡️', teamSize: 2, desc: '輪流答題 · 200HP' },
   { id: '3v3', label: '3 對 3', emoji: '🏰', teamSize: 3, desc: '輪流答題 · 300HP' },
+  { id: 'local', label: '同台對戰', emoji: '🖥️', teamSize: 1, desc: '兩人共用一台裝置，左右分欄同時答題' },
 ];
 
 export const QUESTION_TIME = 15; // 每題作答秒數，逾時換題

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { signUpEmail, signInEmail } from '../firebase';
+import { signUpEmail, signInEmail, signInGuest } from '../firebase';
 import { ensureUserDoc } from '../services/gameSync';
 
-export default function AuthScreen() {
+export default function AuthScreen({ onGuest }) {
   const [tab, setTab] = useState('login'); // login | signup
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,13 +24,14 @@ export default function AuthScreen() {
         const u = await signInEmail(email.trim(), password);
         await ensureUserDoc(u.uid, u.displayName || email.split('@')[0]);
       }
-      // onAuth 監聽會自動切換畫面
     } catch (e) {
       setError(translate(e.code) || e.message);
     } finally {
       setBusy(false);
     }
   };
+
+  const guestLogin = () => onGuest();
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 py-8">
@@ -69,9 +70,20 @@ export default function AuthScreen() {
           style={{ background: '#c9a227' }}>
           {busy ? '處理中…' : tab === 'login' ? '⚔️ 登入王國' : '✨ 建立帳號'}
         </button>
-        <p className="text-xs text-center" style={{ color: 'var(--ink-soft)' }}>
-          使用 Email/密碼帳號（需先在 Firebase 啟用）
-        </p>
+
+        {/* 分隔線 */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-px" style={{ background: '#d8c290' }} />
+          <span className="text-xs" style={{ color: 'var(--ink-soft)' }}>或</span>
+          <div className="flex-1 h-px" style={{ background: '#d8c290' }} />
+        </div>
+
+        {/* 訪客登入 */}
+        <button onClick={guestLogin} disabled={busy}
+          className="w-full py-3 font-bold rounded-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-60"
+          style={{ background: '#fffdf5', border: '2px solid #d8c290', color: 'var(--ink)' }}>
+          🎭 訪客遊玩（不記排行）
+        </button>
       </motion.div>
     </div>
   );

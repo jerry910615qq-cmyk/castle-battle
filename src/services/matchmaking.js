@@ -128,30 +128,42 @@ export async function leaveRoom(code, side, slot) {
 export function joinRandomQueue({ uid, nickname, level, time }, onMatched) {
   const myRef = ref(rtdb, `randomQueue/${uid}`);
   onDisconnect(myRef).remove();
-  set(myRef, { uid, nickname, level, time, joinedAt: serverTimestamp() });
+  // 用 Date.now() 而非 serverTimestamp() —— 避免初次回傳 null 導致排序不穩
+  set(myRef, { uid, nickname, level, time, joinedAt: Date.now() });
 
-  const queueRef = ref(rtdb, 'randomQueue');
+  const queueRef   = ref(rtdb, 'randomQueue');
+  const notifyRef  = ref(rtdb, `randomNotify/${uid}`);
   let done = false;
+  let unsubQueue, unsubNotify;
 
-  const listener = onValue(queueRef, async (snap) => {
+  const cleanup = () => {
+    if (unsubQueue)  { unsubQueue();  unsubQueue  = null; }
+    if (unsubNotify) { unsubNotify(); unsubNotify = null; }
+  };
+
+  unsubQueue = onValue(queueRef, async (snap) => {
     if (done) return;
     const q = snap.val();
     if (!q) return;
-    const players = Object.values(q).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+    // 排序：先按加入時間，同秒以 uid 字典序決勝，確保兩端一致
+    const players = Object.values(q).sort((a, b) => {
+      const dt = (a.joinedAt || 0) - (b.joinedAt || 0);
+      return dt !== 0 ? dt : (a.uid < b.uid ? -1 : 1);
+    });
     if (players.length < 2) return;
 
     const [first, second] = players;
-    // 僅由排序最前者負責建房
-    if (first.uid !== uid) return;
+    if (first.uid !== uid) return;   // 只由「第一位」負責建房
     done = true;
+    cleanup();
 
     const code = genCode();
     const lvl = first.level;
-    const t = first.time;
+    const t   = first.time;
     const blue = newTeam(lvl, 1);
-    const red = newTeam(lvl, 1);
-    blue.members['0'] = { uid: first.uid, nickname: first.nickname, ready: true, correct: 0 };
-    red.members['0'] = { uid: second.uid, nickname: second.nickname, ready: true, correct: 0 };
+    const red  = newTeam(lvl, 1);
+    blue.members['0'] = { uid: first.uid,  nickname: first.nickname,  ready: true, correct: 0 };
+    red.members['0']  = { uid: second.uid, nickname: second.nickname, ready: true, correct: 0 };
 
     await set(ref(rtdb, `rooms/${code}`), {
       gameState: 'playing',
@@ -165,26 +177,22 @@ export function joinRandomQueue({ uid, nickname, level, time }, onMatched) {
     await remove(ref(rtdb, `randomQueue/${second.uid}`));
     await set(ref(rtdb, `randomNotify/${second.uid}`), { code, side: 'red', slot: 0, level: lvl, time: t });
 
-    off(queueRef);
-    off(notifyRef);
     onMatched({ code, side: 'blue', slot: 0, level: lvl, time: t, teamSize: 1 });
   });
 
-  // 第二位玩家收通知
-  const notifyRef = ref(rtdb, `randomNotify/${uid}`);
-  const notifyListener = onValue(notifyRef, (snap) => {
+  // 第二位玩家（red）收通知
+  unsubNotify = onValue(notifyRef, (snap) => {
     const data = snap.val();
     if (data && data.code && !done) {
       done = true;
+      cleanup();
       remove(notifyRef);
-      off(queueRef);
       onMatched({ ...data, teamSize: 1 });
     }
   });
 
   return () => {
-    off(queueRef, 'value', listener);
-    off(notifyRef, 'value', notifyListener);
+    cleanup();
     remove(myRef);
     onDisconnect(myRef).cancel();
   };

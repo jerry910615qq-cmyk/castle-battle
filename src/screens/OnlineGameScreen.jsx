@@ -8,7 +8,7 @@ import {
 } from '../services/gameSync';
 
 export default function OnlineGameScreen({ config, onEnd }) {
-  const { roomId, side, slot, level, time, teamSize, nickname } = config;
+  const { roomId, side, slot, level, time, teamSize, nickname, isGuest } = config;
   const mySide = side;
   const oppSide = side === 'blue' ? 'red' : 'blue';
 
@@ -55,17 +55,18 @@ export default function OnlineGameScreen({ config, onEnd }) {
     }, 1000);
   };
 
+  // 本地錨定倒數：房間一載入即用本機時鐘起算，完全避開伺服器時差造成的凍結
+  const localStartRef = useRef(null);
   useEffect(() => {
     const id = setInterval(() => {
       const r = roomRef.current;
-      const startAt = r?.startAt;
-      const dur = r?.durationSec ?? time;
-      if (typeof startAt === 'number') {
-        setTimeLeft(Math.max(0, dur - Math.floor((Date.now() - startAt) / 1000)));
-      } else {
-        setTimeLeft((t) => Math.max(0, t - 1));
-      }
-    }, 500);
+      if (!r) return;                       // 房間還沒載入
+      if (r.gameState === 'finished') return; // 已結束停止
+      const dur = r.durationSec ?? time;
+      if (localStartRef.current == null) localStartRef.current = Date.now();
+      const elapsed = Math.floor((Date.now() - localStartRef.current) / 1000);
+      setTimeLeft(Math.max(0, dur - elapsed));
+    }, 250);
     return () => clearInterval(id);
   }, [time]);
 
@@ -107,7 +108,7 @@ export default function OnlineGameScreen({ config, onEnd }) {
       settledRef.current = true;
       const winner = room.winner;
       const run = async () => {
-        if (mySide === 'blue' && slot === 0) {
+        if (mySide === 'blue' && slot === 0 && !isGuest) {
           try { await settleMatch(roomId, room); } catch (e) { /* noop */ }
         }
         onEnd({
@@ -120,6 +121,8 @@ export default function OnlineGameScreen({ config, onEnd }) {
     }
   }, [room, mySide, slot, roomId, onEnd]);
 
+  const submittingRef = useRef(false);
+
   const triggerShake = useCallback(() => {
     setShake(true);
     setTimeout(() => setShake(false), 500);
@@ -127,20 +130,22 @@ export default function OnlineGameScreen({ config, onEnd }) {
 
   const handleKey = useCallback(async (k) => {
     if (!room || room.gameState !== 'playing' || timeLeft === 0 || !myQuestion || !myTurn) return;
-    if (k === '⌫') setInput((p) => p.slice(0, -1));
-    else if (k === '✓') {
-      const ans = parseInt(input, 10);
-      if (isNaN(ans)) return;
-      if (ans === myQuestion.answer) {
-        setFeedback('correct'); setInput('');
-        await submitCorrect(roomId, mySide, slot, level, teamSize);
-        setTimeout(() => setFeedback(null), 500);
-      } else {
-        setFeedback('wrong'); triggerShake(); setInput('');
-        await submitWrong(roomId, mySide, slot, level, teamSize);
-        setTimeout(() => setFeedback(null), 500);
-      }
-    } else setInput((p) => (p.length < 6 ? p + k : p));
+    if (k === '⌫') { setInput((p) => p.slice(0, -1)); return; }
+    if (k !== '✓') { setInput((p) => (p.length < 6 ? p + k : p)); return; }
+    if (submittingRef.current) return; // 防止重複送出
+    const ans = parseInt(input, 10);
+    if (isNaN(ans)) return;
+    submittingRef.current = true;
+    if (ans === myQuestion.answer) {
+      setFeedback('correct'); setInput('');
+      await submitCorrect(roomId, mySide, slot, level, teamSize);
+      setTimeout(() => setFeedback(null), 500);
+    } else {
+      setFeedback('wrong'); triggerShake(); setInput('');
+      await submitWrong(roomId, mySide, slot, level, teamSize);
+      setTimeout(() => setFeedback(null), 500);
+    }
+    submittingRef.current = false;
   }, [room, timeLeft, myQuestion, myTurn, input, roomId, mySide, slot, level, teamSize, triggerShake]);
 
   useEffect(() => {
@@ -249,17 +254,18 @@ export default function OnlineGameScreen({ config, onEnd }) {
   );
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--parchment)' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#e8d8b0', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+    <div style={{ width: '100%', maxWidth: '1280px', height: '90vh', display: 'flex', flexDirection: 'column', background: 'var(--parchment)', overflow: 'hidden', boxShadow: '0 0 40px rgba(0,0,0,0.18)', borderRadius: 16 }}>
       {/* 頂部計時器列 */}
       <div className="flex items-center justify-center gap-6 py-2 px-4" style={{
         borderBottom: '2px solid #d8c290',
         background: 'linear-gradient(90deg,#fffdf5,#f6ecd6,#fffdf5)',
       }}>
-        <span className="text-sm font-bold" style={{ color: BLUE }}>藍隊 {room.blue?.score ?? 0} 題</span>
+        <span className="text-sm font-bold" style={{ color: BLUE }}>藍隊 {room.blue?.solved ?? 0} 題</span>
         <span className="text-4xl font-mono font-bold" style={{ color: timerColor }}>
-          {String(Math.floor(timeLeft / 60)).padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}
+          {timeLeft}<span className="text-lg ml-1">秒</span>
         </span>
-        <span className="text-sm font-bold" style={{ color: RED }}>紅隊 {room.red?.score ?? 0} 題</span>
+        <span className="text-sm font-bold" style={{ color: RED }}>紅隊 {room.red?.solved ?? 0} 題</span>
       </div>
 
       {/* 主體三欄 */}
@@ -276,7 +282,7 @@ export default function OnlineGameScreen({ config, onEnd }) {
         />
 
         {/* 中央戰場 */}
-        <div className="flex flex-col justify-center gap-2 relative overflow-hidden" style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
           {/* 騎士衝鋒 */}
           <AnimatePresence>
             {charges.map((c) => (
@@ -287,7 +293,7 @@ export default function OnlineGameScreen({ config, onEnd }) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 1, ease: 'easeIn' }}
                 className="absolute z-20 pointer-events-none"
-                style={{ top: '18%', fontSize: '3.5rem', lineHeight: 1, transform: c.side === 'red' ? 'scaleX(-1)' : 'none', filter: 'drop-shadow(0 3px 4px rgba(0,0,0,.3))' }}
+                style={{ top: '20%', fontSize: '4rem', lineHeight: 1, transform: c.side === 'red' ? 'scaleX(-1)' : 'none', filter: 'drop-shadow(0 3px 4px rgba(0,0,0,.3))' }}
               >
                 🐎
               </motion.div>
@@ -304,26 +310,30 @@ export default function OnlineGameScreen({ config, onEnd }) {
                 exit={{ scale: 2, opacity: 0 }}
                 transition={{ duration: 0.5 }}
                 className="absolute z-30 pointer-events-none"
-                style={{ top: '16%', left: im.side === 'blue' ? '5%' : '70%', fontSize: '2.8rem' }}
+                style={{ top: '18%', left: im.side === 'blue' ? '5%' : '65%', fontSize: '3rem' }}
               >
                 💥
               </motion.div>
             ))}
           </AnimatePresence>
 
-          {/* 城堡 */}
-          <div className="flex items-end justify-between w-full">
-            <motion.div
+          {/* 城堡 — 兩座並排，底部對齊 */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '0 4px', overflow: 'visible' }}>
+            <motion.div style={{ width: '44%' }}
               animate={(hit === 'blue' || (mySide === 'blue' && shake)) ? { x: [-7, 7, -5, 4, 0], rotate: [0, -2, 2, 0] } : {}}
               transition={{ duration: 0.45 }}
             >
-              <CastleSVG color={BLUE} flip={false} hp={blueHp} maxHp={blueMax} size={100} shake={hit === 'blue'} />
+              <div style={{ transform: 'scaleX(1.2) scaleY(0.8)', transformOrigin: 'bottom center' }}>
+                <CastleSVG color={BLUE} flip={false} hp={blueHp} maxHp={blueMax} />
+              </div>
             </motion.div>
-            <motion.div
+            <motion.div style={{ width: '44%' }}
               animate={(hit === 'red' || (mySide === 'red' && shake)) ? { x: [7, -7, 5, -4, 0], rotate: [0, 2, -2, 0] } : {}}
               transition={{ duration: 0.45 }}
             >
-              <CastleSVG color={RED} flip hp={redHp} maxHp={redMax} size={100} shake={hit === 'red'} />
+              <div style={{ transform: 'scaleX(1.2) scaleY(0.8)', transformOrigin: 'bottom center' }}>
+                <CastleSVG color={RED} flip hp={redHp} maxHp={redMax} />
+              </div>
             </motion.div>
           </div>
 
@@ -357,6 +367,7 @@ export default function OnlineGameScreen({ config, onEnd }) {
           isMe={mySide === 'red'}
         />
       </div>
+    </div>
     </div>
   );
 }

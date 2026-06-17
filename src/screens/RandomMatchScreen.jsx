@@ -12,7 +12,7 @@ export default function RandomMatchScreen({ config, onMatched, onCancel }) {
     let active = true;
     cancelRef.current = joinRandomQueue(
       { uid, nickname, level, time },
-      (m) => { if (active) { setDots('已配對！'); setTimeout(() => onMatched({ ...m, nickname }), 700); } }
+      (m) => { if (active) { setDots('已配對！'); setTimeout(() => onMatched({ ...m, roomId: m.code, nickname }), 700); } }
     );
     const t = setInterval(() => setDots((d) => (d.length >= 3 ? '' : d + '.')), 400);
     return () => { active = false; clearInterval(t); if (cancelRef.current) cancelRef.current(); leaveRandomQueue(uid); };

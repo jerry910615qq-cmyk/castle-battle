@@ -2,19 +2,20 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LEVELS, TIMES, MODES } from '../theme';
 
-export default function LobbyScreen({ user, onCreate, onJoin, onRandom, onBrowse, onLeaderboard, onLogout }) {
-  const [mode, setMode] = useState('random');
+// 線上模式：排除 random 和 local（random 改成選模式後的按鈕）
+const ONLINE_MODES = MODES.filter((m) => m.id !== 'local' && m.id !== 'random');
+
+export default function LobbyScreen({ user, onCreate, onJoin, onRandom, onLocal, onBrowse, onLeaderboard, onLogout }) {
+  const [mode, setMode] = useState('1v1');
   const [level, setLevel] = useState(1);
   const [time, setTime] = useState(120);
   const [joinCode, setJoinCode] = useState('');
 
   const selectedMode = MODES.find((m) => m.id === mode);
-  const isRandom = mode === 'random';
+  const isGuest = user.isAnonymous;
 
-  const handlePrimary = () => {
-    if (isRandom) onRandom({ level, time });
-    else onCreate({ level, time, teamSize: selectedMode.teamSize });
-  };
+  const handleCreate = () => onCreate({ level, time, teamSize: selectedMode.teamSize });
+  const handleRandom = () => onRandom({ level, time, teamSize: selectedMode.teamSize });
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 py-8">
@@ -30,18 +31,43 @@ export default function LobbyScreen({ user, onCreate, onJoin, onRandom, onBrowse
         {/* 登入狀態 */}
         <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: '#fffdf5', border: '2px solid #d8c290' }}>
           <div className="text-sm" style={{ color: 'var(--ink)' }}>
-            🔥 <b>{user.displayName || user.email}</b>
-            <div className="text-xs" style={{ color: 'var(--ink-soft)' }}>{user.email}</div>
+            {isGuest ? '🎭' : '🔥'} <b>{user.displayName || user.email || '訪客騎士'}</b>
+            {isGuest
+              ? <div className="text-xs" style={{ color: '#b8860b' }}>訪客模式・成績不計入排行</div>
+              : <div className="text-xs" style={{ color: 'var(--ink-soft)' }}>{user.email}</div>
+            }
           </div>
           <button onClick={onLogout} className="text-xs px-3 py-1 rounded-lg font-bold"
             style={{ background: '#efe2c4', color: 'var(--ink)' }}>登出</button>
         </div>
 
-        {/* 模式 */}
+        {/* ── 同台對戰（特殊模式） ── */}
+        <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'linear-gradient(135deg,#fff8e8,#f6ecd6)', border: '2px dashed #c9a227' }}>
+          <div className="text-center">
+            <span className="text-2xl">🖥️</span>
+            <span className="font-bold ml-2" style={{ color: '#7a3b1d' }}>同台對戰</span>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--ink-soft)' }}>兩人共用一台裝置・左右分欄同時答題・適合課堂投影</div>
+          </div>
+          <button
+            onClick={() => onLocal({ level, time })}
+            className="w-full py-3 font-bold text-lg rounded-2xl text-white shadow-lg transition-all hover:scale-105 active:scale-95"
+            style={{ background: '#c9a227' }}>
+            ⚔️ 開始同台對戰
+          </button>
+        </div>
+
+        {/* 分隔 */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-px" style={{ background: '#d8c290' }} />
+          <span className="text-xs font-bold" style={{ color: 'var(--ink-soft)' }}>線上對戰</span>
+          <div className="flex-1 h-px" style={{ background: '#d8c290' }} />
+        </div>
+
+        {/* 對戰模式選擇（不含隨機） */}
         <div>
           <p className="text-sm font-bold mb-2" style={{ color: 'var(--ink-soft)' }}>遊玩模式</p>
-          <div className="grid grid-cols-2 gap-2">
-            {MODES.map((m) => (
+          <div className="grid grid-cols-3 gap-2">
+            {ONLINE_MODES.map((m) => (
               <button key={m.id} onClick={() => setMode(m.id)}
                 className="py-2 rounded-xl font-bold transition-all text-center"
                 style={{
@@ -53,7 +79,7 @@ export default function LobbyScreen({ user, onCreate, onJoin, onRandom, onBrowse
               </button>
             ))}
           </div>
-          <p className="text-xs mt-1 text-center" style={{ color: 'var(--ink-soft)' }}>{selectedMode.desc}</p>
+          <p className="text-xs mt-1 text-center" style={{ color: 'var(--ink-soft)' }}>{selectedMode?.desc}</p>
         </div>
 
         {/* 難度 */}
@@ -84,23 +110,29 @@ export default function LobbyScreen({ user, onCreate, onJoin, onRandom, onBrowse
           </div>
         </div>
 
-        {/* 主操作 */}
-        <button onClick={handlePrimary}
-          className="w-full py-4 font-bold text-lg rounded-2xl text-white shadow-xl transition-all hover:scale-105 active:scale-95"
-          style={{ background: isRandom ? '#5a8f3c' : '#185FA5' }}>
-          {isRandom ? '🎲 開始隨機匹配' : `🏰 創建房間（${selectedMode.label}）`}
-        </button>
+        {/* 主要操作：建立房間 + 隨機配對 */}
+        <div className="flex gap-2">
+          <button onClick={handleCreate}
+            className="flex-1 py-4 font-bold text-base rounded-2xl text-white shadow-xl transition-all hover:scale-105 active:scale-95"
+            style={{ background: '#185FA5' }}>
+            🏰 建立房間
+          </button>
+          <button onClick={handleRandom}
+            className="flex-1 py-4 font-bold text-base rounded-2xl text-white shadow-xl transition-all hover:scale-105 active:scale-95"
+            style={{ background: '#5a8f3c' }}>
+            🎲 隨機配對
+          </button>
+        </div>
 
-        {!isRandom && (
-          <div className="flex gap-2">
-            <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="輸入 4 位房號" className="flex-1 px-4 py-3 rounded-xl outline-none text-center text-lg tracking-widest font-mono"
-              style={{ background: '#fffdf5', border: '2px solid #d8c290', color: 'var(--ink)' }} />
-            <button onClick={() => onJoin({ code: joinCode })} disabled={joinCode.length !== 4}
-              className="px-6 py-3 font-bold rounded-xl text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-              style={{ background: '#A32D2D' }}>加入</button>
-          </div>
-        )}
+        {/* 加入房間（輸入房號） */}
+        <div className="flex gap-2">
+          <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            placeholder="輸入 4 位房號" className="flex-1 px-4 py-3 rounded-xl outline-none text-center text-lg tracking-widest font-mono"
+            style={{ background: '#fffdf5', border: '2px solid #d8c290', color: 'var(--ink)' }} />
+          <button onClick={() => onJoin({ code: joinCode })} disabled={joinCode.length !== 4}
+            className="px-6 py-3 font-bold rounded-xl text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+            style={{ background: '#A32D2D' }}>加入</button>
+        </div>
 
         <button onClick={onBrowse}
           className="w-full py-3 font-bold rounded-2xl transition-all hover:scale-105 active:scale-95"
@@ -108,11 +140,13 @@ export default function LobbyScreen({ user, onCreate, onJoin, onRandom, onBrowse
           🔍 尋找戰場（瀏覽所有房間）
         </button>
 
-        <button onClick={onLeaderboard}
-          className="w-full py-3 font-bold rounded-2xl transition-all hover:scale-105 active:scale-95"
-          style={{ background: '#fffdf5', border: '2px solid #d8c290', color: 'var(--ink)' }}>
-          🏆 王國排行榜
-        </button>
+        {!isGuest && (
+          <button onClick={onLeaderboard}
+            className="w-full py-3 font-bold rounded-2xl transition-all hover:scale-105 active:scale-95"
+            style={{ background: '#fffdf5', border: '2px solid #d8c290', color: 'var(--ink)' }}>
+            🏆 王國排行榜
+          </button>
+        )}
       </motion.div>
     </div>
   );

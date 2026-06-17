@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import {
   getAuth, onAuthStateChanged,
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signInAnonymously,
   updateProfile, signOut,
 } from "firebase/auth";
 import { getDatabase } from "firebase/database";
@@ -39,6 +40,13 @@ export async function signUpEmail(email, password, nickname) {
 /** 以 Email/密碼 登入 */
 export async function signInEmail(email, password) {
   const cred = await signInWithEmailAndPassword(auth, email, password);
+  return cred.user;
+}
+
+/** 訪客登入（匿名，不記排行） */
+export async function signInGuest() {
+  const cred = await signInAnonymously(auth);
+  await updateProfile(cred.user, { displayName: '訪客騎士' });
   return cred.user;
 }
 
